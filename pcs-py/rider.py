@@ -2,6 +2,7 @@ import re
 import requests as req
 from bs4 import BeautifulSoup
 import pandas as pd
+
 class rider:
 
     def __init__(self, name: str):
@@ -27,6 +28,13 @@ class rider:
         self.soup = BeautifulSoup(self.response.content, "html.parser")
 
     def general_info(self):
+        """
+        - Returns dictionary of useful general purpose information about rider from scraping their homepage
+
+        Returns:
+            out (dict): organized output of general rider info
+        """
+        
 
         name = self.get_name()
         current_team = self.get_current_team()
@@ -81,6 +89,13 @@ class rider:
         return current_team
 
     def get_age(self):
+        """
+        - Method of rider object
+        - Gets the rider's current age from rider HTML
+        
+        Returns:
+            age (int): their age at time of request
+        """
         
         # isolate the soup
         soup = self.soup
@@ -96,6 +111,13 @@ class rider:
         return reported_age
 
     def get_height(self):
+        """
+        - Method of rider object
+        - Gets the rider's height from rider HTML (if it exists)
+
+        Returns:
+            height (float): height of the rider in meters (if doesn't exist, None returned)
+        """
 
         # isolate the soup
         soup = self.soup
@@ -121,7 +143,7 @@ class rider:
         - Returns the weight if exists as int or None obj is doesn't
 
         Returns:
-            reported_weight (int): the weight of the rider in kg
+            reported_weight (int): the weight of the rider in kilograms
         """
 
         # isolate the soup
@@ -142,6 +164,12 @@ class rider:
         return reported_weight
     
     def get_strava(self):
+        """
+        Get details about the rider's strava page
+        
+        Returns:
+            out (dict): dictionary containing the url to the rider's strava page and their id number associated with their account
+        """
 
         # isolate the soup
         soup = self.soup
@@ -159,11 +187,17 @@ class rider:
                 strava_id = strava_link[last_slash_loc+1:]
 
         out = {'link':strava_link,
-        'id':strava_id}
+               'id':strava_id}
 
         return out
 
     def get_ranks(self):
+        """
+        Returns the PCS and UCI ranking for the rider at the time of the request
+
+        Returns:
+            out (dict): pcs and uci ranking
+        """
 
         # isolate the soup
         soup = self.soup
@@ -178,11 +212,17 @@ class rider:
                 uci_rank = int(link.text)               
 
         out = {'pcs':pcs_rank,
-        'uci':uci_rank}
+               'uci':uci_rank}
 
         return out
 
     def get_team_history(self):
+        """
+        Function that returns a riders complete contract history, and future team contracts if they are already signed
+
+        Returns:
+            team_frame (pd.Frame): dataframe with columns of year, team name and the url to the PCS team page
+        """
         
         # isolate the soup
         soup = self.soup
@@ -205,6 +245,12 @@ class rider:
         return team_frame
 
     def get_race_history(self):
+        """
+        Returns the rider's complete race history as known by PCS
+
+        Returns:
+            results_frame (pd.Frame): pandas dataframe with rows corresponding to each race organized by date
+        """
         
         rider_id = self.url.split('/')[-1]
         
@@ -269,7 +315,7 @@ class rider:
                                                 'PCS_Points', 'UCI_Points'])
 
 
-        return
+        return results_frame
 
 
 ### General Purpose Functions
