@@ -15,7 +15,8 @@ class rider:
                             1) "FirstName MiddleName LastName" (actual name)
                             2) "firstname-middlename-lastname" (format for webpage)
                         * note in case of duplicate rider name *
-                        - for example, Benjamin Thomas, also list the number associated to their name by PCS
+                        - also list the number associated to their name by PCS
+                        - for example, Benjamin Thomas = benjamin-thomas-2
         """
 
         # returns the url to request
