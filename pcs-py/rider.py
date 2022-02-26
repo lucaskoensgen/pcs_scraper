@@ -2,8 +2,9 @@ import re
 import requests as req
 from bs4 import BeautifulSoup
 import pandas as pd
+import utility as utl
 
-class rider:
+class Rider:
 
     def __init__(self, name: str):
         """
@@ -20,7 +21,7 @@ class rider:
         """
 
         # returns the url to request
-        self.url = get_rider_url(name)
+        self.url = utl.get_rider_url(name)
         # the response from the get request
         self.response = req.get(self.url)
         # the beautiful soup object
@@ -34,7 +35,7 @@ class rider:
             out (dict): organized output of general rider info
         """
         
-        # get all the data for output
+        # get all the data for output - add nationality??
         name = self.get_name()
         current_team = self.get_current_team()
         age = self.get_age()
@@ -59,12 +60,15 @@ class rider:
         Function that returns a riders complete contract history, and future team contracts if they are already signed
 
         Returns:
-            team_frame (pd.Frame): dataframe with columns of year, team name and the url to the PCS team page
+            team_frame (pd.DataFrame): dataframe with columns of ['Year', 'Team_Name', 'Team_Link']
+                - Year: the year they were on the team
+                - Team_Name: the name of the team they were on 
+                - Team_Link: the url to the PCS team page
         """
         
         # isolate the soup
         soup = self.soup
-        # find the weight using 'kg' as the reference lookup and find the first instance
+        # find the teams by current rider
         teams = soup.body.find("ul", class_ = "list rdr-teams moblist moblist").find_all("li", class_ = "main")
         # preset empty list
         data = []
@@ -332,70 +336,3 @@ class rider:
                'uci':uci_rank}
 
         return out
-
-### General Purpose Functions
-
-def get_rider_url(name:str):
-    """
-    Retrieves the url associated with the requested rider
-
-    Args:
-        name (str): The name of the rider as it appears on their PCS page
-                    - this can be either in format: 
-                        1) "FirstName MiddleName LastName" (actual name)
-                        2) "firstname-middlename-lastname" (format for webpage)
-                    * note in case of duplicate rider name *
-                    - for example, Benjamin Thomas, also list the number associated to their name by PCS
-
-    Returns:
-        str: the full url in https://www...com format
-    """
-    
-    # the leading url for request
-    basic_url = "https://www.procyclingstats.com/rider/"
-    # converting the rider name into how pcs needs it
-    url_name = test_name(name)
-    # add the two together
-    full_url = basic_url + url_name
-    
-    return full_url
-
-def test_name(name: str):
-    """
-    Convert passed name into format required for url
-
-    Args:
-        name (str): refer to get_rider_url
-
-    Returns:
-        str: an all lowercase, firstname-lastname str
-    """
-
-    # check how many spaces there are in the name
-    num_spaces = name.count(' ')
-    
-    # if there is at least one space, then 
-    if num_spaces > 0:
-        # convert to lowercase and replace the spaces with dashes
-        url_name = name.lower()
-        url_name = url_name.replace(' ', '-')
-    else:
-        # convert to lowercase
-        url_name = name.lower()
-
-    return url_name
-
-def send_request(url: str):
-    """[summary]
-
-    Args:
-        url (str): [description]
-
-    Returns:
-        [type]: [description]
-    """
-
-    # get
-    response = req.get(url)
-
-    return response
