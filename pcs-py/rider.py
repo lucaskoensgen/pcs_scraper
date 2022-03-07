@@ -39,6 +39,7 @@ class Rider:
         name = self.get_name()
         current_team = self.get_current_team()
         age = self.get_age()
+        nationality = self.get_nationality()
         weight = self.get_weight()
         height = self.get_height()
         strava = self.get_strava()
@@ -48,6 +49,7 @@ class Rider:
         out = {'name':name, 
                'team':current_team, 
                'age':age, 
+               'nationality':nationality,
                'weight':weight, 
                'height':height, 
                'strava':strava, 
@@ -80,13 +82,16 @@ class Rider:
             # the name of the team
             team_name = team.find('a').text
             # the href to the team
-            team_link = "https://www.procyclingstats.com/" + team.find('a', href=True).get('href')
+            team_href = team.find('a', href=True).get('href')
+            # the pcs name
+            pcs_name = team_href[5:-5]
+            
             # create nested list
-            data = data + [[year, team_name, team_link]]
+            data = data + [[year, team_name, team_href, pcs_name]]
             
         # turn nested list into dataframe 
         team_frame = pd.DataFrame(data = data,
-                                  columns = ['Year', 'Team_Name', 'Team_Link'])
+                                  columns = ['year', 'team_name', 'team_href', 'pcs_name'])
         
         return team_frame
 
@@ -97,6 +102,7 @@ class Rider:
         Returns:
             results_frame (pd.Frame): pandas dataframe with rows corresponding to each race organized by date
         """
+        
         # get rider name in pcs format back from the url
         rider_id = self.url.split('/')[-1]
         # use the basic results page for rider 
@@ -151,22 +157,27 @@ class Rider:
                         # don't need the row number
                         if j == 0:
                             pass
-                        # if it's the race column, get both the text and the href
+                        # if it's the race column, get the text, the href and the pcs race name
                         elif j == 3:
-                            race_list = race_list + [val.find('a').text]
-                            race_list = race_list + ['https://www.procyclingstats.com/' + val.find('a', href = True).get('href')]
+                            race_name = val.find('a').text
+                            race_ref = val.find('a', href = True).get('href')
+                            pcs_race_loc = race_ref[5:].find('/')
+                            pcs_name = race_ref[5:pcs_race_loc+5]
+                            race_list = race_list + [race_name, race_ref, pcs_name]
+                            
                         # otherwise, just extract the text
                         else:
                             race_list = race_list + [val.text]
+                            
                     # concat the list as nested list
                     data_out = data_out + [race_list]
                     
         # turn nested list of each row into dataframe
         results_frame = pd.DataFrame(data = data_out,
-                                     columns = ['Date', 'Result', 
-                                                'Race', 'Race_Result_Page',
-                                                'Class', 'Distance', 
-                                                'PCS_Points', 'UCI_Points'])
+                                     columns = ['date', 'result', 
+                                                'race_name', 'race_result_href', 'pcs_name'
+                                                'class', 'distance', 
+                                                'pcs_points', 'uci_points'])
 
 
         return results_frame
@@ -183,9 +194,21 @@ class Rider:
         # isolate the soup
         soup = self.soup
         # navigate through the html to return the name of the rider as printed on pcs
-        printed_name = soup.body.find(class_="page-title").find("h1").text
+        printed_name = soup.find(class_="page-title").find("h1").text
+        
+        if '  ' in printed_name:
+            printed_name = printed_name.replace('  ', ' ')
 
         return printed_name
+    
+    def get_nationality(self):
+        
+        # isolate soup
+        soup = self.soup
+        # navigate through html to return the rider nationality 
+        nationality = soup.find("div", class_ = "rdr-info-cont").find("a").text
+        
+        return nationality
 
     def get_current_team(self):
         """

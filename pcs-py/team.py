@@ -11,6 +11,10 @@ class Team:
 
         Args:
             name (str): the team name
+                - either in "Team Name" or "team-name" format
+                    - With "Team Name" format, all ' ' are turned into '-' and everything is made lowercase
+                    - Preferred to use "team-name" format from utl.list_teams_by_year().loc[:,'pcs_name'] or Rider.get_team_history().loc[:,'pcs-name]
+                        - PCS can store name slightly different to what you expect from actual team name
             year (int): the year of the team
         """
         
@@ -26,7 +30,7 @@ class Team:
         Returns a dataframe of the riders on the team ordered alphabetically 
 
         Returns:
-            rider_frame (pd.DataFrame): dataframe with columns of ['Rider', 'Rider_Link']
+            rider_frame (pd.DataFrame): dataframe with columns of ['rider_name', 'rider_href', 'pcs_name']
                 - Rider: the name of the rider
                 - Rider_Link: the url to request to get a rider's page
         """
@@ -41,37 +45,22 @@ class Team:
         
         # loop through the table of riders
         for row in riders_table:
+            
             # get the name
             rider_name = row.find('a').text
-            
-            # name is last first, need to re order - first step is split into seperate strings
-            rider_names = rider_name.split(' ')
-            # preset names to empty list
-            first_name = []
-            last_name = []
-            # loop through the list of the name strings
-            for name in rider_names:
-                # if all uppercase then make lower and capitalize
-                if name.isupper():
-                    last_name = last_name + [name.lower().capitalize()]
-                # if not uppercase then its the first name
-                else:
-                    first_name = [name]
-            
-            # make the organized name back into single string again
-            rider_name_list = first_name + last_name
-            new_rider_name = " ".join(rider_name_list)
+            new_rider_name = utl.convert_printed_rider_to_first_last(rider_name)
             
             # the link to for the rider
             rider_href = row.find('a', href=True).get('href')
-            rider_link = "https://www.procyclingstats.com/" + rider_href
-            
+            # just their pcs name
+            pcs_name = rider_href[6:]
+                        
             # add nested list to list of riders
-            riders = riders + [[new_rider_name, rider_link]]
+            riders = riders + [[new_rider_name, rider_href, pcs_name]]
         
         # turn nested list into a dataframe
         rider_frame = pd.DataFrame(data = riders,
-                                   columns = ['Rider', 'Rider_Link'])
+                                   columns = ['rider_name', 'rider_href', 'pcs_name'])
         
         return rider_frame
     
@@ -80,7 +69,7 @@ class Team:
         Returns the races the team participated in
 
         Returns:
-            races_frame (pd.DataFrame): dataframe with columns of ['Date', 'Race', 'Race_Link']
+            races_frame (pd.DataFrame): dataframe with columns of ['date', 'race_name', 'race_href', 'pcs_name']
                 - Date: the start date of the race
                 - Race: the name of the race the team was in
                 - Race_Link: the url to request to get a races page
@@ -132,19 +121,22 @@ class Team:
                         date = column.text
                     # take the name of the race and the link
                     elif i == 4:
+                        # text
                         race_name = column.find('a').text
-                        race_link = "https://www.procyclingstats.com/" + column.find('a', href = True).get('href')
+                        # href
+                        race_href = column.find('a', href = True).get('href')
+                        # the name of the race in href
+                        pcs_race_loc = race_href[5:].find('/')
+                        pcs_race_name = race_href[5:pcs_race_loc+5]
+                
                 # store as a nested list
-                races = races + [[date, race_name, race_link]]
+                races = races + [[date, race_name, race_href, pcs_race_name]]
+
         # turn nested lists into a dataframe
         races_frame = pd.DataFrame(data = races, 
-                                   columns = ['Date', 'Race', 'Race_Link'])
+                                   columns = ['date', 'race_name', 'race_href', 'pcs_name'])
         
         # remove any national championships
         races_frame = races_frame.loc[(races_frame.loc[:,'Race'].str.contains("National") == False), :]
         
-        return races_frame
-            
-            
-            
-            
+        return races_frame            
