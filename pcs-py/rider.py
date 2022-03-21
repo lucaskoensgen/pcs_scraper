@@ -1,8 +1,10 @@
+# general imports
 import re
 import requests as req
 from bs4 import BeautifulSoup
 import pandas as pd
-import utility as utl
+# pcs-py specific imports
+from utility import url_management as mgt
 
 class Rider:
 
@@ -21,7 +23,7 @@ class Rider:
         """
 
         # returns the url to request
-        self.url = utl.get_rider_url(name)
+        self.url = mgt.rider_url(name)
         # the response from the get request
         self.response = req.get(self.url)
         # the beautiful soup object
@@ -32,7 +34,10 @@ class Rider:
         - Returns dictionary of useful general purpose information about rider from scraping their homepage
 
         Returns:
-            out (dict): organized output of general rider info
+            dict: organized output of general rider info 
+                    - keys = {'name', 'team', 'age', 
+                              'nationality', 'weight', 'height', 
+                              'strava', 'ranks'}
         """
         
         # get all the data for output - add nationality??
@@ -59,13 +64,11 @@ class Rider:
     
     def get_team_history(self):
         """
-        Function that returns a riders complete contract history, and future team contracts if they are already signed
+        Function that returns a riders complete season-by-season team history.
+        Also returns teams in future if they are already signed for those seasons
 
         Returns:
-            team_frame (pd.DataFrame): dataframe with columns of ['Year', 'Team_Name', 'Team_Link']
-                - Year: the year they were on the team
-                - Team_Name: the name of the team they were on 
-                - Team_Link: the url to the PCS team page
+            pd.DataFrame: columns = ['season', 'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year']
         """
         
         # isolate the soup
@@ -78,29 +81,36 @@ class Rider:
         # loop through all teams rider has been a part of
         for team in teams:
             # the year
-            year = team.find('div', class_='season').text
+            season = team.find('div', class_='season').text
             # the name of the team
             team_name = team.find('a').text
             # the href to the team
             team_href = team.find('a', href=True).get('href')
             # the pcs name
-            pcs_name = team_href[5:-5]
+            team_pcs_name = team_href[5:-5]
+            # the pcs year
+            team_pcs_year = team_href[-4:]
             
             # create nested list
-            data = data + [[year, team_name, team_href, pcs_name]]
+            data = data + [[season, team_name, team_href, team_pcs_name, team_pcs_year]]
             
         # turn nested list into dataframe 
         team_frame = pd.DataFrame(data = data,
-                                  columns = ['year', 'team_name', 'team_href', 'pcs_name'])
+                                  columns = ['season', 
+                                             'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year'])
         
         return team_frame
 
     def get_race_history(self):
         """
-        Returns the rider's complete race history as known by PCS
+        Returns the rider's complete race history as known by PCS.
+        Includes stage race GC and other minor classification results 
 
         Returns:
-            results_frame (pd.Frame): pandas dataframe with rows corresponding to each race organized by date
+            pd.DataFrame: columns = ['date', 'result', 
+                                     'race_name', 'race_href', 'race_pcs_name', 'race_pcs_year',
+                                     'classification', 'distance', 
+                                     'pcs_points', 'uci_points']
         """
         
         # get rider name in pcs format back from the url
@@ -160,14 +170,17 @@ class Rider:
                         # if it's the race column, get the text, the href and the pcs race name
                         elif j == 3:
                             race_name = val.find('a').text
-                            race_ref = val.find('a', href = True).get('href')
-                            pcs_race_loc = race_ref[5:].find('/')
-                            pcs_name = race_ref[5:pcs_race_loc+5]
-                            race_list = race_list + [race_name, race_ref, pcs_name]
+                            race_href = val.find('a', href = True).get('href')
+                            race_pcs_name = race_href[5:-5]
+                            race_pcs_year = race_href[-4:]
+                            race_list = race_list + [race_name, race_href, race_pcs_name, race_pcs_year]
                             
                         # otherwise, just extract the text
                         else:
-                            race_list = race_list + [val.text]
+                            text = val.text
+                            if text == '':
+                                text = '-'
+                            race_list = race_list + [text]
                             
                     # concat the list as nested list
                     data_out = data_out + [race_list]
@@ -175,8 +188,8 @@ class Rider:
         # turn nested list of each row into dataframe
         results_frame = pd.DataFrame(data = data_out,
                                      columns = ['date', 'result', 
-                                                'race_name', 'race_result_href', 'pcs_name'
-                                                'class', 'distance', 
+                                                'race_name', 'race_href', 'race_pcs_name', 'race_pcs_year',
+                                                'classification', 'distance', 
                                                 'pcs_points', 'uci_points'])
 
 
@@ -184,11 +197,10 @@ class Rider:
 
     def get_name(self):
         """
-        - Method of rider object
-        - Gets the rider name from rider HTML
+        Gets the rider name from rider HTML
 
         Returns:
-            printed_name (str): the string of the rider's name as printed on the website
+            str: the string of the rider's name as printed on the website
         """
 
         # isolate the soup
@@ -212,11 +224,10 @@ class Rider:
 
     def get_current_team(self):
         """
-        - Method of rider object
-        - Gets the rider's current team from rider HTML
+        Gets the rider's current team from rider HTML
 
         Returns:
-            current_team (str): the string of the rider's current team as printed on PCS
+            str: the string of the rider's current team as printed on PCS
         """
 
         # isolate the soup
@@ -229,11 +240,10 @@ class Rider:
 
     def get_age(self):
         """
-        - Method of rider object
-        - Gets the rider's current age from rider HTML
+        Gets the rider's current age from rider HTML
         
         Returns:
-            age (int): their age at time of request
+            int: their age at time of request
         """
         
         # isolate the soup
@@ -250,11 +260,10 @@ class Rider:
 
     def get_height(self):
         """
-        - Method of rider object
-        - Gets the rider's height from rider HTML (if it exists)
+        Gets the rider's height from rider HTML (if it exists)
 
         Returns:
-            height (float): height of the rider in meters (if doesn't exist, None returned)
+            float/None: height of the rider in meters (if doesn't exist, None returned)
         """
 
         # isolate the soup
@@ -275,12 +284,10 @@ class Rider:
 
     def get_weight(self):
         """
-        - Method of rider object
-        - Gets the weight of a rider from the html
-        - Returns the weight if exists as int or None obj is doesn't
-
+        Gets the weight of a rider from the html (if it exists)
+        
         Returns:
-            reported_weight (int): the weight of the rider in kilograms
+            float/None: the weight of the rider in kilograms (None if doesn't exist)
         """
 
         # isolate the soup
@@ -295,7 +302,7 @@ class Rider:
         else:
             # convert to string and then only extract the number
             reported_weight = str(reported_weight)
-            reported_weight = [int(s) for s in reported_weight.split() if s.isdigit()][0]
+            reported_weight = [float(s) for s in reported_weight.split() if s.isdigit()][0]
 
         return reported_weight
     
@@ -304,7 +311,8 @@ class Rider:
         Get details about the rider's strava page
         
         Returns:
-            out (dict): dictionary containing the url to the rider's strava page and their id number associated with their account
+            dict: the url to the rider's strava page and the id number associated with their account for api use
+                - keys = {'link', 'id'}
         """
 
         # isolate the soup
@@ -336,7 +344,8 @@ class Rider:
         Returns the PCS and UCI ranking for the rider at the time of the request
 
         Returns:
-            out (dict): pcs and uci ranking
+            dict: pcs and uci ranking
+                - keys = {'pcs', 'uci'}
         """
 
         # isolate the soup

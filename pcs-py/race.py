@@ -1,9 +1,13 @@
+# general imports
 import requests as req
 from bs4 import BeautifulSoup
 import pandas as pd
-import numpy as np
-import utility as utl
+# pcs-py specific imports
+from utility import url_management as mgt
+from utility import table_manipulation as tbl
+from utility import convert_data as cvt
 
+# general class
 class Race:
     def __init__(self, name: str, year: int):
         """
@@ -18,12 +22,12 @@ class Race:
                         - to get the name, can refer to 'pcs_name' column in 
                             1) Rider.get_race_history()
                             2) Team.get_race_history()
-                            3) utl.list_race_options()
+                            3) list_race_options()
             year (int): the year of the race
         """
         
         # returns the url to request
-        self.url = utl.get_race_url(name, year, suffix = 'overview')
+        self.url = mgt.race_url(name, year, suffix = 'overview')
         # get the response from url
         self.response = req.get(self.url)
         # create the soup
@@ -176,13 +180,13 @@ class Race:
 
         Returns:
             pd.DataFrame: the startlist with each rider and their team identified with columns:
-                            - ['team_name', 'team_href', 'team_pcs_name',
+                            - ['team_name', 'team_href', 'team_pcs_name', 'team_pcs_year'
                                'rider_name', 'rider_href', 'rider_pcs_name']
             
         """
         
         # get the soup for startlist page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = 'startlist')
+        url = race_url(self.pcs_name, self.year, suffix = 'startlist')
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
@@ -199,6 +203,7 @@ class Race:
             team_name = team.find("b").find("a").text
             team_href = team.find("b").find("a", href = True).get('href')
             team_pcs_name = team_href[5:-5]
+            team_pcs_year = team_href[-4:]
             
             # find all riders in team
             riders = team.find("ul").find_all("li")
@@ -207,18 +212,18 @@ class Race:
             for rider in riders:
                 # extract text name and convert to First Last
                 rider_name = rider.find("a").text
-                new_rider_name = utl.convert_printed_rider_to_first_last(rider_name)
+                new_rider_name = cvt.printed_rider_to_first_last(rider_name)
                 
                 # get rider href & pcs name
                 rider_href = rider.find("a", href = True).get('href')
                 rider_pcs_name = rider_href[6:]
                 
-                startlist = startlist + [[team_name, team_href, team_pcs_name,
+                startlist = startlist + [[team_name, team_href, team_pcs_name, team_pcs_year,
                                           new_rider_name, rider_href, rider_pcs_name]]
                 
         # export as dataframe
         startlist_frame = pd.DataFrame(data = startlist,
-                                       columns = ['team_name', 'team_href', 'team_pcs_name',
+                                       columns = ['team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
                                                   'rider_name', 'rider_href', 'rider_pcs_name'])
         
         return startlist_frame
@@ -231,17 +236,19 @@ class Race:
         - If you're interested in individual stage results during a stage race, see get_stage_result()
         - If you're interested in GC/KOM/Sprint results after a stage, see get_running_gc_time(), get_running_kom_points(), get_running_sprint_points()
         - If you're interested in KOM/Sprint results during a stage, see get_stage_kom_points(), get_stage_sprint_points()
+        - For all the above, refer to get_stages() for a dataframe of all the stages in the given race
 
         Returns:
             pd.DataFrame: the main results table for race 
-                            - columns: ['rank', 'uci_points', 'pcs_points', 
-                                        'time', 'time_gap',
+                            - columns: ['rank',
                                         'rider_name', 'rider_href', 'rider_pcs_name',
-                                        'team_name', 'team_href', 'team_pcs_name']
+                                        'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
+                                        'uci_points', 'pcs_points', 
+                                        'time', 'time_gap',]
         """
         
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year)
+        url = mgt.race_url(self.pcs_name, self.year)
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
@@ -263,17 +270,17 @@ class Race:
         # preset the acceptable strings for columns 
         columns_to_keep = ['Rnk', 'Rider', 'Team', 'UCI', 'Pnt', 'Time']
         
-        column_indices = utl.determine_column_indices(table_header, columns_to_keep)
+        column_indices = tbl.column_indices(table_header, columns_to_keep)
         
-        results = utl.determine_table_output(table_body, columns_to_keep, column_indices)
+        results = tbl.table_output(table_body, columns_to_keep, column_indices)
                 
         # convert to dataframe for export
         results_frame = pd.DataFrame(data = results,
                                      columns = ['rank', 
                                                 'rider_name', 'rider_href', 'rider_pcs_name',
-                                                'team_name', 'team_href', 'team_pcs_name',
+                                                'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
                                                 'uci_points', 'pcs_points',
-                                                'time', 'time_gap',])
+                                                'time', 'time_gap'])
                 
         return results_frame
     
@@ -291,7 +298,7 @@ class Race:
         """
         
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = 'stages')
+        url = mgt.race_url(self.pcs_name, self.year, suffix = 'stages')
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
@@ -329,12 +336,12 @@ class Race:
                                                'stage_href', 'stage_pcs_name'])
         
         # account for if race had a prologue
-        if stages_frame.loc[0,'stage_name'].str.contains('Prologue'):
+        if 'Prologue' in stages_frame.loc[0,'stage_name']:
             stages_frame.loc[:, 'stage_number'] = stages_frame.loc[:, 'stage_number'] - 1
                                         
         return stages_frame
     
-    def get_stage_info(self, pcs_stage):
+    def get_stage_info(self, pcs_stage: str):
         """
         Gets defining details about the stage as a dictionary
 
@@ -350,7 +357,7 @@ class Race:
         """
         
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = pcs_stage)
+        url = mgt.race_url(self.pcs_name, self.year, suffix = pcs_stage)
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
@@ -365,7 +372,7 @@ class Race:
             if i == 0:
                 # extract the date and convert to correct format
                 printed_date = row.find_all('div')[1].text
-                info['date'] = utl.convert_printed_date_to_standard(printed_date)
+                info['date'] = cvt.printed_date_to_standard(printed_date)
             # if second, its the start time
             elif i == 1:
                 info['start_time_local'] = row.find_all('div')[1].split(' ')[0].text
@@ -402,20 +409,20 @@ class Race:
 
         return info
     
-    def get_stage_result(self, pcs_stage):
+    def get_stage_result(self, pcs_stage: str):
         """
         Returns a dataframe of the time-based results from the requested stage
 
         Args:
             pcs_stage (str): the stage name according to PCS (usually in format: 'stage-#')
             
-
         Returns:
             pd.DataFrame: dataframe organized by finishing place
-                            - columns: ['rank', 'uci_points', 'pcs_points', 
-                                        'time', 'time_gap',
+                            - columns: ['rank', 
                                         'rider_name', 'rider_href', 'rider_pcs_name',
-                                        'team_name', 'team_href', 'team_pcs_name']
+                                        'team_name', 'team_href', 'team_pcs_name'
+                                        'uci_points', 'pcs_points', 
+                                        'time', 'time_gap']
         """     
         
         # preset the acceptable strings for columns 
@@ -423,176 +430,141 @@ class Race:
         result_type = ''
         
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = pcs_stage)
+        url = mgt.race_url(self.pcs_name, self.year, suffix = pcs_stage)
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
         restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
         
-        tab_index = utl.determine_result_cont_index(restabs, result_type)
+        tab_index = tbl.result_cont_index(restabs, result_type)
         
         table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
         table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
         table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
         
         # get the correct columns
-        column_indices = utl.determine_column_indices(table_header, columns_to_keep)
+        column_indices = tbl.column_indices(table_header, columns_to_keep)
         
         # get nested list of table results
-        results = utl.determine_table_output(table_body, columns_to_keep, column_indices)
+        results = tbl.table_output(table_body, columns_to_keep, column_indices)
                 
         # convert to dataframe for export
         stage_result = pd.DataFrame(data = results,
-                                    columns = ['rank', 
+                                    columns = ['rank',
                                                'rider_name', 'rider_href', 'rider_pcs_name',
-                                               'team_name', 'team_href', 'team_pcs_name',
+                                               'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
                                                'uci_points', 'pcs_points',
-                                               'time', 'time_gap',])
+                                               'time', 'time_gap'])
         
         return stage_result
     
-    def get_running_gc_time(self, pcs_stage):
+    def get_running_gc_time(self, pcs_stage: str):
+        """
+        Returns a dataframe of the total sum of time accumulated for each rider by the end of the given stage
+
+        Args:
+            pcs_stage (str): the stage name according to PCS (usually in format: 'stage-#')
+
+        Returns:
+            pd.DataFrame: a dataframe organized by race time
+                            - columns:['rank', 
+                                       'rider_name', 'rider_href', 'rider_pcs_name',
+                                       'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
+                                       'uci_points', 
+                                       'time', 'time_gap']
+        """
         
         # preset the acceptable strings for columns & tab of interest
         columns_to_keep = ['Rnk', 'Rider', 'Team', 'UCI', 'Time']
         result_type = 'GC'
         
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = pcs_stage)
+        url = mgt.race_url(self.pcs_name, self.year, suffix = pcs_stage)
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
         restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
         
-        tab_index = utl.determine_result_cont_index(restabs, result_type)
+        tab_index = tbl.result_cont_index(restabs, result_type)
         
         table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
         table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
         table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
         
         # get the correct columns
-        column_indices = utl.determine_column_indices(table_header, columns_to_keep)
+        column_indices = tbl.column_indices(table_header, columns_to_keep)
         
         # get nested list of table results
-        results = utl.determine_table_output(table_body, columns_to_keep, column_indices)
+        results = tbl.table_output(table_body, columns_to_keep, column_indices)
                 
         # convert to dataframe for export
         stage_gc = pd.DataFrame(data = results,
                                 columns = ['rank', 
                                            'rider_name', 'rider_href', 'rider_pcs_name',
-                                           'team_name', 'team_href', 'team_pcs_name',
+                                           'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
                                            'uci_points',
                                            'time', 'time_gap'])
         
         return stage_gc
     
-    def get_stage_sprint_points(self, pcs_stage):
+    def get_stage_sprint_points(self, pcs_stage: str):
+        """
+        Returns a dataframe of each Sprint in a stage and the points awarded 
+
+        Args:
+            pcs_stage (str): the stage name according to PCS (usually in format: 'stage-#')
+
+        Returns:
+            pd.DataFrame: a dataframe organized by Sprints 
+                            - columns = ['sprint_name', 'rank',
+                                         'rider_name', 'rider_href', 'rider_pcs_name',
+                                         'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
+                                         'sprint_points'])
+        """
         
         startlist = self.get_startlist()
+        columns_to_keep = ['Rnk', 'Rider', 'Team', 'Points']
+        point_type = "Sprint"
         
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = pcs_stage)
+        url = mgt.race_url(self.pcs_name, self.year, suffix = pcs_stage)
         # have to add extra details for this method
         url = url + "/live/complementary-results"
         # request and soup
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
-        # all the titles and corresponding tables within data
-        possible_titles = soup.find("div", class_ = 'page-content page-object default').find_all('h3')
-        possible_tables = soup.find("div", class_ = 'page-content page-object default').find_all('table', class_ = "basic")
-        
-        columns_to_keep = ['Rnk', 'Rider', 'Team', 'Points']
-        
-        sprint_points = []
-        
-        # loop through the titles and tables, getting them together
-        for i, (title, table) in enumerate(zip(possible_titles, possible_tables)):
-            
-            title_text = title.text
-                        
-            # based on the title of the table was this a sprint point?
-            if any(['Sprint |' in title_text, 
-                    'Points at finish' in title_text, 
-                    'Finishline points' in title_text]):
-                
-                # if so, get header and body
-                header = table.find('thead')
-                body = table.find('tbody')
-                
-                # preset empty list for column indices
-                column_indices = []
-                
-                # loop through the header
-                for i, column in enumerate(header.find_all('th')):
-                    # text of the header column
-                    text = column.text
-                    # if the header is in the acceptable list
-                    if text in columns_to_keep:
-                        # concat index & text pairing
-                        column_indices = column_indices + [i] 
-                
-                for j, row in enumerate(body.find_all("tr")):
-                                
-                    # find all the columns for the given row
-                    cols = row.find_all('td')
-                    
-                    # only keep the column indices of choice
-                    cols = [x for i, x in enumerate(cols) if i in column_indices]
-                    
-                    # preset empty list for current row
-                    current_sprint = [title_text]
-                    
-                    # loop through the columns that have been kept
-                    for col, col_title in zip(cols, columns_to_keep):
-                        
-                        if col_title == 'Rnk':
-                            current_sprint = current_sprint + [int(col.text)]
-                        elif col_title == 'Rider':
-                            
-                            printed_name = col.find('a').text.split(' ')
-                            printed_name = list(map(lambda x:x.upper(), printed_name))
-                            printed_name[-1] = printed_name[-1].lower().capitalize()
-                            printed_name = ' '.join(printed_name)
-                            
-                            rider_name = utl.convert_printed_rider_to_first_last(printed_name)
-                            rider_href = col.find('a', href = True).get('href')
-                            rider_pcs_name = rider_href[6:]
-                            
-                            current_sprint = current_sprint + [rider_name, rider_href, rider_pcs_name]
-                            
-                        elif col_title == 'Team':
-                            printed_team = col.text
-                            
-                            team_row = startlist.loc[(startlist.loc[:,'team_name'] == printed_team), :].copy()
-                            team_name = team_row.loc[team_row.index.values[0], 'team_name']
-                            team_href = team_row.loc[team_row.index.values[0], 'team_href']
-                            team_pcs_name = team_row.loc[team_row.index.values[0], 'team_pcs_name']
-                            
-                            current_sprint = current_sprint + [team_name, team_href, team_pcs_name]
-                        elif col_title == 'Points':
-                            points = int(col.text)
-                            current_sprint = current_sprint + [points]   
-                        
-                    # concat to nested list 
-                    sprint_points = sprint_points + [current_sprint]
+        sprint_points = tbl.complementary_points(soup, startlist, columns_to_keep, point_type)
         
         sprint_frame = pd.DataFrame(data = sprint_points,
                                     columns = ['sprint_name', 'rank',
                                                'rider_name', 'rider_href', 'rider_pcs_name',
-                                               'team_name', 'team_href', 'team_pcs_name',
-                                               'points'])
+                                               'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
+                                               'sprint_points'])
                         
         return sprint_frame
     
-    def get_running_sprint_points(self, pcs_stage):
+    def get_running_sprint_points(self, pcs_stage: str):
+        """
+        Returns a dataframe of the total sum of Sprint points accumulated by the end of the given stage
+
+        Args:
+            pcs_stage (str): the stage name according to PCS (usually in format: 'stage-#')
+
+        Returns:
+            pd.DataFrame: a dataframe organized by Sprint points.
+                            - columns:['rank', 
+                                       'rider_name', 'rider_href', 'rider_pcs_name',
+                                       'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
+                                       'sprint_points']
+        """
         
         # preset the acceptable strings for columns & tab of interest
         columns_to_keep = ['Rnk', 'Rider', 'Team', 'Points']
         result_type = 'Points'
 
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = pcs_stage)
+        url = mgt.race_url(self.pcs_name, self.year, suffix = pcs_stage)
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
@@ -600,7 +572,7 @@ class Race:
         restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
         
         # the index to use when accessing result table
-        tab_index = utl.determine_result_cont_index(restabs, result_type)
+        tab_index = tbl.result_cont_index(restabs, result_type)
         
         # the table and it's components
         table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
@@ -608,52 +580,78 @@ class Race:
         table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
         
         # get the column indices to extract for each row
-        column_indices = utl.determine_column_indices(table_header, columns_to_keep)
+        column_indices = tbl.column_indices(table_header, columns_to_keep)
         
         # get nested list of table results
-        results = utl.determine_table_output(table_body, columns_to_keep, column_indices)
+        results = tbl.table_output(table_body, columns_to_keep, column_indices)
                 
         # convert to dataframe for export
         running_sprint = pd.DataFrame(data = results,
                                       columns = ['rank', 
                                                  'rider_name', 'rider_href', 'rider_pcs_name',
-                                                 'team_name', 'team_href', 'team_pcs_name',
+                                                 'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
                                                  'sprint_points'])
         
         return running_sprint
     
-    def get_stage_kom_points(self, pcs_stage):
+    def get_stage_kom_points(self, pcs_stage: str):
+        """
+        Returns a dataframe of each KOM sprint in a stage and the points awarded 
+
+        Args:
+            pcs_stage (str): the stage name according to PCS (usually in format: 'stage-#')
+
+        Returns:
+            pd.DataFrame: a dataframe organized by KOM sprints 
+                            - columns = ['kom_name', 'rank',
+                                         'rider_name', 'rider_href', 'rider_pcs_name',
+                                         'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
+                                         'kom_points'])
+        """
         
         startlist = self.get_startlist()
         columns_to_keep = ['Rnk', 'Rider', 'Team', 'Points']
         point_type = "KOM"
         
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = pcs_stage)
+        url = mgt.race_url(self.pcs_name, self.year, suffix = pcs_stage)
         # have to add extra details for this method
         url = url + "/live/complementary-results"
         # request and soup
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
-        kom_points = utl.determine_complementary_results(soup, startlist, columns_to_keep, point_type)
+        kom_points = tbl.complementary_points(soup, startlist, columns_to_keep, point_type)
         
         kom_frame = pd.DataFrame(data = kom_points,
-                                    columns = ['sprint_name', 'rank',
+                                    columns = ['kom_name', 'rank',
                                                'rider_name', 'rider_href', 'rider_pcs_name',
-                                               'team_name', 'team_href', 'team_pcs_name',
-                                               'points'])
+                                               'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
+                                               'kom_points'])
         
         return kom_frame
     
-    def get_running_kom_points(self, pcs_stage):
+    def get_running_kom_points(self, pcs_stage: str):
+        """
+        Returns a dataframe of the total sum of KOM points accumulated by the end of the given stage
+
+        Args:
+            pcs_stage (str): the stage name according to PCS (usually in format: 'stage-#')
+
+        Returns:
+            pd.DataFrame: a dataframe organized by KOM points.
+                            - columns:['rank', 
+                                       'rider_name', 'rider_href', 'rider_pcs_name',
+                                       'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
+                                       'kom_points']
+        """
         
         # preset the acceptable strings for columns & tab of interest 
         columns_to_keep = ['Rnk', 'Rider', 'Team', 'Points']
         result_type = "KOM"
 
         # get the soup for results page
-        url = utl.get_race_url(self.pcs_name, self.year, suffix = pcs_stage)
+        url = mgt.race_url(self.pcs_name, self.year, suffix = pcs_stage)
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
@@ -661,7 +659,7 @@ class Race:
         restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
         
         # the index to use when accessing result table
-        tab_index = utl.determine_result_cont_index(restabs, result_type)
+        tab_index = tbl.result_cont_index(restabs, result_type)
         
         # the table and it's components
         table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
@@ -669,22 +667,16 @@ class Race:
         table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
         
         # get the column indices to extract for each row
-        column_indices = utl.determine_column_indices(table_header, columns_to_keep)
+        column_indices = tbl.column_indices(table_header, columns_to_keep)
         
         # get nested list of table results
-        results = utl.determine_table_output(table_body, columns_to_keep, column_indices)
+        results = tbl.table_output(table_body, columns_to_keep, column_indices)
                 
         # convert to dataframe for export
         running_kom = pd.DataFrame(data = results,
                                    columns = ['rank', 
                                               'rider_name', 'rider_href', 'rider_pcs_name',
-                                              'team_name', 'team_href', 'team_pcs_name',
+                                              'team_name', 'team_href', 'team_pcs_name', 'team_pcs_year',
                                               'kom_points'])
         
         return running_kom
-    
-    
-    
-    
-    
-    

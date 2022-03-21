@@ -1,8 +1,11 @@
+# general imports
 import re
 import requests as req
 from bs4 import BeautifulSoup
 import pandas as pd
-import utility as utl
+# pcs-py specific imports
+from utility import url_management as mgt
+from utility import convert_data as cvt
 
 class Team:
     def __init__(self, name: str, year: int):
@@ -13,13 +16,13 @@ class Team:
             name (str): the team name
                 - either in "Team Name" or "team-name" format
                     - With "Team Name" format, all ' ' are turned into '-' and everything is made lowercase
-                    - Preferred to use "team-name" format from utl.list_teams_by_year().loc[:,'pcs_name'] or Rider.get_team_history().loc[:,'pcs-name]
+                    - Preferred to use "team-name" format from list_teams_by_year().loc[:,'pcs_name'] or Rider.get_team_history().loc[:,'pcs-name]
                         - PCS can store name slightly different to what you expect from actual team name
             year (int): the year of the team
         """
         
         # returns the url to request
-        self.url = utl.get_team_url(name, year)
+        self.url = mgt.team_url(name, year)
         # get the response from url
         self.response = req.get(self.url)
         # create the soup
@@ -30,9 +33,8 @@ class Team:
         Returns a dataframe of the riders on the team ordered alphabetically 
 
         Returns:
-            rider_frame (pd.DataFrame): dataframe with columns of ['rider_name', 'rider_href', 'pcs_name']
-                - Rider: the name of the rider
-                - Rider_Link: the url to request to get a rider's page
+            pd.DataFrame: columns = ['rider_name', 'rider_href', 'pcs_name']
+
         """
         
         # isolate the soup
@@ -48,7 +50,7 @@ class Team:
             
             # get the name
             rider_name = row.find('a').text
-            new_rider_name = utl.convert_printed_rider_to_first_last(rider_name)
+            new_rider_name = cvt.printed_rider_to_first_last(rider_name)
             
             # the link to for the rider
             rider_href = row.find('a', href=True).get('href')
@@ -64,16 +66,18 @@ class Team:
         
         return rider_frame
     
-    def get_race_history(self):
+    def get_race_history(self, national_races = False):
         """
-        Returns the races the team participated in
+        Returns the races the team participated in.
+        Default behaviour removes national championships races, as team is technically not competing in them
+
+        Args:
+            national_races (bool, optional): Do you want to include national championship races? Defaults to False.
 
         Returns:
-            races_frame (pd.DataFrame): dataframe with columns of ['date', 'race_name', 'race_href', 'pcs_name']
-                - Date: the start date of the race
-                - Race: the name of the race the team was in
-                - Race_Link: the url to request to get a races page
+            pd.DataFrame: columns = ['date', 'race_name', 'race_href', 'pcs_name']
         """
+        
         # id for searching using php is team name
         id = self.url[37:]
         # since year is used in php as well
@@ -126,17 +130,20 @@ class Team:
                         # href
                         race_href = column.find('a', href = True).get('href')
                         # the name of the race in href
-                        pcs_race_loc = race_href[5:].find('/')
-                        pcs_race_name = race_href[5:pcs_race_loc+5]
+                        race_pcs_name = race_href[5:-5]
+                        race_pcs_year = race_href[-4:]
+                        
                 
                 # store as a nested list
-                races = races + [[date, race_name, race_href, pcs_race_name]]
+                races = races + [[date, race_name, race_href, race_pcs_name, race_pcs_year]]
 
         # turn nested lists into a dataframe
         races_frame = pd.DataFrame(data = races, 
-                                   columns = ['date', 'race_name', 'race_href', 'pcs_name'])
+                                   columns = ['date', 'race_name', 
+                                              'race_href', 'race_pcs_name', 'race_pcs_year'])
         
         # remove any national championships
-        races_frame = races_frame.loc[(races_frame.loc[:,'Race'].str.contains("National") == False), :]
+        if national_races == False:
+            races_frame = races_frame.loc[(races_frame.loc[:,'Race'].str.contains("National") == False), :]
         
         return races_frame            
