@@ -18,7 +18,7 @@ In the next versions of this project I would like to link the statistical data f
 ###### Via pip:
 Coming soon
 
-###### Via conda:
+###### **Via conda**:
 Coming soon
 
 ###### Via source code:
