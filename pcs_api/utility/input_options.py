@@ -117,7 +117,7 @@ def race_options_by_year(year: int, **kwargs):
                 race_class = column.text
                 
         # concat to list
-        races = races + [[race, race_href, race_pcs_name, race_pcs_year]]
+        races = races + [[race, race_href, race_pcs_name, race_pcs_year, race_class]]
 
     # convert to dataframe
     races_frame = pd.DataFrame(data = races,
