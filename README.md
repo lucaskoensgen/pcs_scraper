@@ -16,14 +16,10 @@ In the next versions of this project I would like to link the statistical data f
 ## Installation
 
 ###### Via pip:
-```
-pip install pcs_scraper
-```
+Coming soon
 
 ###### Via conda:
-```
-conda install pcs_scraper
-```
+Coming soon
 
 ###### Via source code:
 Fork/clone this repo and create a conda environment to develop in using:
