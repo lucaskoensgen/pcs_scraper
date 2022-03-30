@@ -8,7 +8,7 @@ if __name__ == '__main__':
 # with open("README.md") as readme_file:
 #     readme = readme_file.read()
 # setup(
-#     name='pcs_api',
+#     name='pcs_scraper',
 #     version='0.1.0',
 #     license='GPLv3',
 #     description="A python-based api to access procyclingstats data",
@@ -16,7 +16,7 @@ if __name__ == '__main__':
 #     long_description_content_type="text/markdown",
 #     author="Lucas Koensgen",
 #     author_email="l.koensgen@gmail.com",
-#     url="https://github.com/lucaskoensgen/pcs_api",
+#     url="https://github.com/lucaskoensgen/pcs_scraper",
 #     packages=find_packages(exclude=['tests', 'examples']),
 #     install_requires=[
 #         'requests>=2.27.1',
