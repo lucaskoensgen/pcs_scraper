@@ -42,12 +42,20 @@ def result_cont_index(restabs, result_type):
     Returns:
         int: the index to access the desired result table
     """
+    
+    # stages can be labelled as either stage, prol. or empty string on PCS
+    if result_type == 'Stage':
+        result_type = ['Stage', 'Prol.','']
+    # otherwise seem to just be named the same as inputs
+    else:
+        result_type = [result_type]
+    
     # loop through the tabs
     for i, tab in enumerate(restabs):
         # find the text for the tab
         tab_name = tab.find('a').text
         # if that text is the same as requested, take the index
-        if tab_name == result_type:
+        if any(x == tab_name for x in result_type):
             index = i
     
     return index
@@ -93,10 +101,17 @@ def table_output(body, column_names: list, column_indices: list):
                 current_result = current_result + [rider_name, rider_href, rider_pcs_name]
             # extract the team name
             elif col_title == 'Team':
-                team_name = col.find('a').text
-                team_href = col.find('a', href = True).get('href')
-                team_pcs_name = team_href[5:-5]
-                team_pcs_year = team_href[-4:]
+                team_name = col.find('a')
+                if team_name == None:
+                    team_name = 'N/A'
+                    team_href = 'N/A'
+                    team_pcs_name = 'N/A'
+                    team_pcs_year = 'N/A'
+                else:
+                    team_name = team_name.text
+                    team_href = col.find('a', href = True).get('href')
+                    team_pcs_name = team_href[5:-5]
+                    team_pcs_year = team_href[-4:]
                 current_result = current_result + [team_name, team_href, team_pcs_name, team_pcs_year]
             # extract uci points
             elif col_title == 'UCI':
@@ -111,6 +126,8 @@ def table_output(body, column_names: list, column_indices: list):
                 # first row has winning time
                 if i == 0:
                     time = col.text
+                    if '+' in time:
+                        time = time[:time.find('+')]
                     time = cvt.printed_time_to_seconds(time)
                     winning_time = time
                     time_gap = 0
@@ -119,6 +136,8 @@ def table_output(body, column_names: list, column_indices: list):
                     # when the rider recorded a time
                     try:
                         time_gap = col.find('div', class_="hide").text
+                        if '+' in time_gap:
+                            time_gap = time_gap[:time_gap.find('+')]
                         time_gap = cvt.printed_time_to_seconds(time_gap)
                         time = winning_time + time_gap
                     # when the rider didn't record a time (ie. DNF'ed)

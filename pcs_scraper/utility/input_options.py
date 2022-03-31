@@ -11,7 +11,7 @@ def selectable_race_circuits():
 
     Returns:
         list: the supported race circuits to select
-            - useful when using list_race_options()
+            - useful when using race_options_by_year()
     """
     
     circuits = ['UCI World Tour',
@@ -26,7 +26,7 @@ def selectable_race_classifications():
 
     Returns:
         list: the supported race classifications to select from
-            - useful when using list_race_options()
+            - useful when using race_options_by_year()
     """
     
     classes = ['1.1',

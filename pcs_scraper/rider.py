@@ -171,8 +171,8 @@ class Rider:
                         elif j == 3:
                             race_name = val.find('a').text
                             race_href = val.find('a', href = True).get('href')
-                            race_pcs_name = race_href[5:-5]
-                            race_pcs_year = race_href[-4:]
+                            race_pcs_name = race_href.split('/')[1]
+                            race_pcs_year = race_href.split('/')[-2]
                             race_list = race_list + [race_name, race_href, race_pcs_name, race_pcs_year]
                             
                         # otherwise, just extract the text

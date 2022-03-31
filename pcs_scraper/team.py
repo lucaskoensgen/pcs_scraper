@@ -68,13 +68,13 @@ class Team:
     def get_race_history(self, national_races = True):
         """
         Returns the races the team participated in.
-        Default behaviour removes national championships races, as team is technically not competing in them
+        Default behaviour keeps national championships races, even though team is not technically competing
 
         Args:
-            national_races (bool, optional): Do you want to include national championship races? Defaults to False.
+            national_races (bool, optional): Do you want to include national championship races? Defaults to True.
 
         Returns:
-            pd.DataFrame: columns = ['date', 'race_name', 'race_href', 'pcs_name']
+            pd.DataFrame: columns = ['date', 'race_name', 'race_href', 'race_pcs_name', 'race_pcs_year']
         """
         
         # id for searching using php is team name
@@ -129,8 +129,8 @@ class Team:
                         # href
                         race_href = column.find('a', href = True).get('href')
                         # the name of the race in href
-                        race_pcs_name = race_href[5:-5]
-                        race_pcs_year = race_href[-4:]
+                        race_pcs_name = race_href.split('/')[1]
+                        race_pcs_year = race_href.split('/')[-2]
                         
                 
                 # store as a nested list

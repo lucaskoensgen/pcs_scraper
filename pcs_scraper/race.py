@@ -110,8 +110,11 @@ class Race:
         soup = self.soup
         # extract the useful title details
         title_row = soup.find('div', class_ = "page-title").find('div', class_ = "main").find_all("font")
-        # extract classification text without parenthases 
-        classification = title_row[1].text.replace('(', '').replace(')', '')
+        # extract classification text without parenthases - if it's the first time the race is run, no edition so its the first in list
+        if len(title_row) == 1:
+            classification = title_row[0].text.replace('(', '').replace(')', '')
+        else:
+            classification = title_row[1].text.replace('(', '').replace(')', '')
         
         return classification
     
@@ -432,18 +435,19 @@ class Race:
         """     
         
         # preset the acceptable strings for columns 
-        columns_to_keep = ['Rnk', 'Rider', 'Team', 'Pnt', 'Time']
-        result_type = ''
+        columns_to_keep = ['Rnk', 'Rider', 'Team', 'UCI', 'Pnt', 'Time']
+        result_type = 'Stage'
         
         # get the soup for results page
         url = mgt.race_url(self.pcs_name, self.year, suffix = pcs_stage)
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
+        # get the tabs and find the correct tab index
         restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
-        
         tab_index = tbl.result_cont_index(restabs, result_type)
         
+        # find table based on the tab index then break into head and body
         table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
         table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
         table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
@@ -479,7 +483,7 @@ class Race:
                                        'uci_points', 
                                        'time', 'time_gap']
         """
-        
+                
         # preset the acceptable strings for columns & tab of interest
         columns_to_keep = ['Rnk', 'Rider', 'Team', 'UCI', 'Time']
         result_type = 'GC'
@@ -489,10 +493,11 @@ class Race:
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
+        # get the tabs and find the correct tab index
         restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
-        
         tab_index = tbl.result_cont_index(restabs, result_type)
         
+        # find table based on the tab index then break into head and body
         table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
         table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
         table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
@@ -540,8 +545,10 @@ class Race:
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
+        # find the points per sprint from complementary page
         sprint_points = tbl.complementary_points(soup, startlist, columns_to_keep, point_type)
         
+        # output dataframe
         sprint_frame = pd.DataFrame(data = sprint_points,
                                     columns = ['sprint_name', 'rank',
                                                'rider_name', 'rider_href', 'rider_pcs_name',
@@ -574,13 +581,11 @@ class Race:
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
-        # all the possible result tabs
+        # get the tabs and find the correct tab index
         restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
-        
-        # the index to use when accessing result table
         tab_index = tbl.result_cont_index(restabs, result_type)
         
-        # the table and it's components
+        # find table based on the tab index then break into head and body
         table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
         table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
         table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
@@ -626,7 +631,8 @@ class Race:
         # request and soup
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
-        
+
+        # find the points per sprint from complementary page
         kom_points = tbl.complementary_points(soup, startlist, columns_to_keep, point_type)
         
         kom_frame = pd.DataFrame(data = kom_points,
