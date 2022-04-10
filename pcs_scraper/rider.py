@@ -74,7 +74,10 @@ class Rider:
         # isolate the soup
         soup = self.soup
         # find the teams by current rider
-        teams = soup.body.find("ul", class_ = "list rdr-teams moblist moblist").find_all("li", class_ = "main")
+        try: # this works for pre-2018 riders
+            teams = soup.body.find("ul", class_ = "list rdr-teams moblist moblist").find_all("li", class_ = "main")
+        except: # this works for post-2018 riders (removed a moblist)
+            teams = soup.body.find("ul", class_ = "list rdr-teams moblist").find_all("li", class_ = "main")
         # preset empty list
         data = []
         
@@ -87,9 +90,9 @@ class Rider:
             # the href to the team
             team_href = team.find('a', href=True).get('href')
             # the pcs name
-            team_pcs_name = team_href[5:-5]
+            team_pcs_name = '-'.join(team_href.split('/')[1].split('-')[:-1])
             # the pcs year
-            team_pcs_year = team_href[-4:]
+            team_pcs_year = team_href.split('/')[1].split('-')[-1]
             
             # create nested list
             data = data + [[season, team_name, team_href, team_pcs_name, team_pcs_year]]
@@ -101,7 +104,7 @@ class Rider:
         
         return team_frame
 
-    def get_race_history(self):
+    def get_race_history(self, **kwargs):
         """
         Returns the rider's complete race history as known by PCS.
         Includes stage race GC and other minor classification results 
@@ -113,15 +116,53 @@ class Rider:
                                      'pcs_points', 'uci_points']
         """
         
+        # set the kwargs
+        # the season
+        season = kwargs.pop('season', '')
+        season = str(season)
+        # to include ttt or not
+        exclude_ttt = kwargs.pop('exclude_ttt', False)
+        if exclude_ttt == False:
+            exclude_tt = "0"
+        elif exclude_ttt == True:
+            exclude_tt = "1"
+        # the type of race if interested in reducing returned results
+        race_type = kwargs.pop('race_type', '')
+        if race_type == '':
+            pass
+        elif race_type == 'stage':
+            race_type = "1"
+        elif race_type == 'prologue':
+            race_type = "2"
+        elif race_type == 'tt' or race_type == 'time_trial':
+            race_type = "3"
+        elif race_type == 'gc' or race_type == 'general_classification':
+            race_type = "4"
+        elif race_type == 'sprint' or race_type == 'points_classification':
+            race_type = "5"
+        elif race_type == 'youth' or race_type == 'youth_classification':
+            race_type = "6"
+        elif race_type == 'kom' or race_type == 'mountains_classification':
+            race_type = "7"
+        elif race_type == 'one-day':
+            race_type = "8"
+
         # get rider name in pcs format back from the url
         rider_id = self.url.split('/')[-1]
         # use the basic results page for rider 
         results_url = (
             "https://www.procyclingstats.com/" + 
-            "rider.php?xseason=&zxseason=&pxseason=equal&sort=date&race=&km1=&zkm1=&pkm1=equal&" +
-            "limit=100&offset=0&topx=&ztopx=&ptopx=smallerorequal&type=&znation=&continent=&pnts=" + 
-            "&zpnts=&ppnts=equal&level=&rnk=&zrnk=&prnk=equal&exclude_tt=0&racedate=&zracedate=&pracedate=equal" + 
-            "&name=&pname=contains&category=&profile_score=&pprofile_score=largerorequal&filter=Filter&id=" + rider_id + "&p=results"
+            "rider.php?xseason=" + season +  "&zxseason=" +  
+            "&pxseason=equal&sort=date&race=&km1=&zkm1=&pkm1=equal&" +
+            "limit=100&offset=0&topx=&ztopx=&ptopx=smallerorequal&" + 
+            "type=&" + race_type + 
+            "znation=&continent=&pnts=" + 
+            "&zpnts=&ppnts=equal&level=&rnk=&zrnk=&prnk=equal&" + 
+            "exclude_tt=" + exclude_tt +
+            "&racedate=&zracedate=&pracedate=equal" + 
+            "&name=&pname=contains&category=&profile_score=&pprofile_score=largerorequal&filter=Filter&"
+            "id=" + rider_id + 
+            "&p=results"
             )
         # request the page
         results_page = req.get(results_url)
@@ -139,9 +180,12 @@ class Rider:
             # format new query
             results_url = (
                 "https://www.procyclingstats.com/" + 
-                "rider.php?xseason=&zxseason=&pxseason=equal&sort=date&race=&km1=&zkm1=&pkm1=equal&limit=100&" + 
-                "offset=" + limit + "&topx=&ztopx=&ptopx=smallerorequal&type=&znation=&continent=&pnts=&zpnts=&ppnts=equal&level=&rnk=&zrnk=&prnk=equal&exclude_tt=0&racedate=&zracedate=&pracedate=equal&name=&pname=contains&category=&profile_score=&pprofile_score=largerorequal&filter=Filter&" + 
-                "id=" + rider_id + "&p=results"
+                "rider.php?xseason=" + season +  "&zxseason=" +  
+                "&pxseason=equal&sort=date&race=&km1=&zkm1=&pkm1=equal&limit=100&" + 
+                "offset=" + limit + 
+                "&topx=&ztopx=&ptopx=smallerorequal&type=&znation=&continent=&pnts=&zpnts=&ppnts=equal&level=&rnk=&zrnk=&prnk=equal&exclude_tt=0&racedate=&zracedate=&pracedate=equal&name=&pname=contains&category=&profile_score=&pprofile_score=largerorequal&filter=Filter&" + 
+                "id=" + rider_id + 
+                "&p=results"
                 )
             # request the page
             results_page = req.get(results_url)
@@ -368,3 +412,87 @@ class Rider:
                'uci':uci_rank}
 
         return out
+    
+    def get_uci_points_season(self, season):
+        """
+        Returns the summation UCI points for the season requested
+        Does not work for all years on PCS (post 2018 only)
+        
+        Args:
+            season (str/int): The season as a year
+
+        Returns:
+            int: number of points accumulated in season
+        """        
+        
+        # the season
+        season = str(season)
+
+        # get rider name in pcs format back from the url
+        rider_id = self.url.split('/')[-1]
+        
+        results_url = (
+            "https://www.procyclingstats.com/rider.php?" + 
+            "date=" + season + "-12-31" +
+            "&filter=Filter&" + 
+            "id=" + rider_id + 
+            "&p=results&s=uci-world-ranking"
+            )
+        
+        # request the page
+        results_page = req.get(results_url)
+        # turn into soup
+        results_soup = BeautifulSoup(results_page.content, "html.parser")
+        try:
+            # the row with the sum
+            points_sum_row = results_soup.find('tr', class_ = "sum").find_all('td')
+            # the column with the sum
+            uci_points = int(points_sum_row[-1].text)
+        except:
+            uci_points = int(0)
+        
+        return uci_points
+
+    def get_pcs_points_season(self, season):
+        """
+        Returns the summation PCS points for the season requested
+                
+        Args:
+            season (str/int): The season as a year
+
+        Returns:
+            int: number of points accumulated in season
+        """        
+        
+        # the season
+        season = str(season)
+
+        # get rider name in pcs format back from the url
+        rider_id = self.url.split('/')[-1]
+        
+        results_url = (
+            "https://www.procyclingstats.com/rider.php?" + 
+            "date=" + season + "-12-31" +
+            "&filter=Filter&" + 
+            "id=" + rider_id + 
+            "&p=results&s=pcs-season-ranking"
+            )
+        
+        # request the page
+        results_page = req.get(results_url)
+        # turn into soup
+        results_soup = BeautifulSoup(results_page.content, "html.parser")
+        try:
+            # the row with the sum
+            points_sum_row = results_soup.find('tr', class_ = "sum").find_all('td')
+            # the column with the sum
+            pcs_points = int(points_sum_row[-1].text)
+        except:
+            pcs_points = int(0)
+            
+        return pcs_points
+        
+
+             
+    
+        

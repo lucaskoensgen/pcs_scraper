@@ -260,22 +260,39 @@ class Race:
         # the table of results - need the second one if a stage race
         possible_tables = soup.find("div", class_ = "page-content page-object default").find_all("div", class_ = "result-cont")
         
+        # if only one, take it (this is for one day races)
         if len(possible_tables) == 1:
             table = possible_tables[0]
             header = possible_headers[0]
+        # if multiple tables, take the second one (ie. final gc standings)
         else:
             table = possible_tables[1]
             header = possible_headers[1]
         
-        table_header = header.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
-        table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
+        # most all races fall into this category 
+        try:
+            table_header = header.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
+            table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
+            
+            # preset the acceptable strings for columns 
+            columns_to_keep = ['Rnk', 'Rider', 'Team', 'UCI', 'Pnt', 'Time']
+            
+            column_indices = tbl.column_indices(table_header, columns_to_keep)
+            
+            results = tbl.table_output(table_body, columns_to_keep, column_indices)
         
-        # preset the acceptable strings for columns 
-        columns_to_keep = ['Rnk', 'Rider', 'Team', 'UCI', 'Pnt', 'Time']
-        
-        column_indices = tbl.column_indices(table_header, columns_to_keep)
-        
-        results = tbl.table_output(table_body, columns_to_keep, column_indices)
+        # exception is one day TTT races (ie. CC/WC TTT)
+        except:
+            # 
+            table_body = table.find('table', class_ = "results-ttt").find('tbody').find_all('tr')
+            table_header = table.find('table', class_ = "results-ttt").find('thead').find_all('th')
+    
+            # get the correct columns
+            columns_to_keep = ['Pos.', 'Team', 'Time', 'PCS points', 'UCI points']
+            column_indices = tbl.column_indices(table_header, columns_to_keep)
+            
+            # get nested list of table results
+            results = tbl.table_output_ttt(table_body, columns_to_keep, column_indices)
                 
         # convert to dataframe for export
         results_frame = pd.DataFrame(data = results,
@@ -449,14 +466,30 @@ class Race:
         
         # find table based on the tab index then break into head and body
         table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
-        table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
-        table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
         
-        # get the correct columns
-        column_indices = tbl.column_indices(table_header, columns_to_keep)
+        # try this for everything non-TTT
+        try:
+            table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
+            table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
+            
+            # get the correct columns
+            column_indices = tbl.column_indices(table_header, columns_to_keep)
+            
+            # get nested list of table results
+            results = tbl.table_output(table_body, columns_to_keep, column_indices)
         
-        # get nested list of table results
-        results = tbl.table_output(table_body, columns_to_keep, column_indices)
+        # assuming if it fails then it was a TTT (watch this space for updates)
+        except:
+            table_body = table.find('table', class_ = "results-ttt").find('tbody').find_all('tr')
+            table_header = table.find('table', class_ = "results-ttt").find('thead').find_all('th')
+            
+            # get the correct columns
+            columns_to_keep = ['Pos.', 'Team', 'Time', 'PCS points', 'UCI points']
+            column_indices = tbl.column_indices(table_header, columns_to_keep)
+            
+            # get nested list of table results
+            results = tbl.table_output_ttt(table_body, columns_to_keep, column_indices)
+        
                 
         # convert to dataframe for export
         stage_result = pd.DataFrame(data = results,

@@ -145,4 +145,36 @@ class Team:
         if national_races == False:
             races_frame = races_frame.loc[(races_frame.loc[:,'Race'].str.contains("National") == False), :]
         
-        return races_frame            
+        return races_frame          
+    
+    def get_name_history(self):
+        
+        # isolate the soup
+        soup = self.soup
+        # locate dropdown list
+        dropdown = soup.find('div', class_ = 'pageSelectNav').find('select').find_all('option')
+        
+        # preset empty list
+        team_names = []
+        
+        for item in dropdown:
+            
+            team_href = item['value']
+            team_href = team_href.split('/')[:2]
+            team_href = '/'.join(team_href)
+            
+            team_pcs_name = team_href[5:-5]
+            team_pcs_year = team_href[-4:]
+            
+            team_name = item.text.split('|')
+            team_name = team_name[1]
+            team_name = team_name[1:]
+            
+            current_team = [team_name, team_href, team_pcs_name, team_pcs_year]
+            team_names = team_names + [current_team]
+            
+        frame = pd.DataFrame(data = team_names,
+                             columns = ['team_name', 'team_href', 'team_pcs_name', 'team_pcs_year'])
+            
+        return frame
+        

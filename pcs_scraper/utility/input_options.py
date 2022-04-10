@@ -45,7 +45,8 @@ def selectable_race_classifications():
                '2.WWT',
                'CC',
                'NC',
-               'WC']
+               'WC',
+               'Olympics']
     
     return classes
 
@@ -110,8 +111,9 @@ def race_options_by_year(year: int, **kwargs):
                 # the href
                 race_href = column.find('a', href = True).get('href')
                 # the name of the race in href
-                race_pcs_name = race_href[5:-5]
-                race_pcs_year = race_href[-4:]
+                split_href = race_href.split('/')
+                race_pcs_name = split_href[1]
+                race_pcs_year = split_href[2]
                 
             elif i == 4:
                 race_class = column.text
