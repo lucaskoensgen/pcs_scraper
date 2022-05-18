@@ -349,6 +349,13 @@ class Race:
             stages = stages + [[date,
                                 stage_name, stage_number,
                                 stage_href, stage_pcs_name]]
+        
+        # special case of paris-nice 2020, race was cancelled at last stage
+        if self.pcs_name == 'paris-nice' and self.year == '2020':
+            stages = stages[:-1]
+        # special case of uae tour 2020, race was cancelled at last 2 stages
+        elif self.pcs_name == 'uae-tour' and self.year == '2020':
+            stages = stages[:-2]
     
         stages_frame = pd.DataFrame(data = stages,
                                     columns = ['date', 
@@ -373,7 +380,7 @@ class Race:
                     - keys: ['date', 'start_time', 'distance', 
                              'parcours_type', 'finish_type', 
                              'profile_score', 'vertical_meters',
-                             'won_by']
+                             'startlist_score']
         """
         
         if pcs_stage == 'one-day-race':
@@ -431,7 +438,7 @@ class Race:
                 info['vertical_meters'] = row.find_all('div')[1].text
                 # thirteenth, how was the race won
             elif i == 12:
-                info['won_by'] = row.find_all('div')[1].text
+                info['startlist_score'] = row.find_all('div')[1].text
 
         return info
     
@@ -460,35 +467,41 @@ class Race:
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
-        # get the tabs and find the correct tab index
-        restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
-        tab_index = tbl.result_cont_index(restabs, result_type)
         
-        # find table based on the tab index then break into head and body
-        table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
-        
-        # try this for everything non-TTT
-        try:
-            table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
-            table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
+        if any([x in soup.find("div", class_ = "w68 left mb_w100").find("div").text for x in ["cancelled", "Cancelled",
+                                                                                              "Coronavirus", "coronavirus", 
+                                                                                              "Corona-virus", "corona-virus"]]):
+            results = pd.DataFrame()
+        else:
+            # get the tabs and find the correct tab index
+            restabs = soup.find("div", class_ = "page-content page-object default").find("ul", class_ = "restabs").find_all("li")
+            tab_index = tbl.result_cont_index(restabs, result_type)
             
-            # get the correct columns
-            column_indices = tbl.column_indices(table_header, columns_to_keep)
+            # find table based on the tab index then break into head and body
+            table = soup.find("div", class_ = "page-content page-object default").find("div", class_ = "w68 left mb_w100").find_all("div", class_ = "result-cont")[tab_index]
             
-            # get nested list of table results
-            results = tbl.table_output(table_body, columns_to_keep, column_indices)
-        
-        # assuming if it fails then it was a TTT (watch this space for updates)
-        except:
-            table_body = table.find('table', class_ = "results-ttt").find('tbody').find_all('tr')
-            table_header = table.find('table', class_ = "results-ttt").find('thead').find_all('th')
+            # try this for everything non-TTT
+            try:
+                table_body = table.find('table', class_ = "results basic moblist10").find('tbody').find_all('tr')
+                table_header = table.find('table', class_ = "results basic moblist10").find('thead').find_all('th')
+                
+                # get the correct columns
+                column_indices = tbl.column_indices(table_header, columns_to_keep)
+                
+                # get nested list of table results
+                results = tbl.table_output(table_body, columns_to_keep, column_indices)
             
-            # get the correct columns
-            columns_to_keep = ['Pos.', 'Team', 'Time', 'PCS points', 'UCI points']
-            column_indices = tbl.column_indices(table_header, columns_to_keep)
-            
-            # get nested list of table results
-            results = tbl.table_output_ttt(table_body, columns_to_keep, column_indices)
+            # assuming if it fails then it was a TTT (watch this space for updates)
+            except:
+                table_body = table.find('table', class_ = "results-ttt").find('tbody').find_all('tr')
+                table_header = table.find('table', class_ = "results-ttt").find('thead').find_all('th')
+                
+                # get the correct columns
+                columns_to_keep = ['Pos.', 'Team', 'Time', 'PCS points', 'UCI points']
+                column_indices = tbl.column_indices(table_header, columns_to_keep)
+                
+                # get nested list of table results
+                results = tbl.table_output_ttt(table_body, columns_to_keep, column_indices)
         
                 
         # convert to dataframe for export

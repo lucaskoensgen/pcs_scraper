@@ -128,6 +128,8 @@ def table_output(body, column_names: list, column_indices: list):
                 # first row has winning time
                 if i == 0:
                     time = col.text
+                    if time == '-':
+                        time = '00:01'
                     if '+' in time:
                         time = time[:time.find('+')]
                     time = cvt.printed_time_to_seconds(time)
