@@ -11,7 +11,7 @@ _pcs_scraper_ lets users interact with PCS through three fundamental and distinc
 2. Teams
 3. Races
 
-In the next versions of this project I would like to link the statistical data from PCS with rider strata data.
+In the next versions of this project I would like to link the statistical data from PCS with rider Strava data.
 
 ## Installation
 
