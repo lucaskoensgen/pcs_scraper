@@ -7,7 +7,7 @@ from .utility import url_management as mgt
 from .utility import table_manipulation as tbl
 from .utility import convert_data as cvt
 
-# general class
+# define general race class and it's methods
 class Race:
     def __init__(self, name: str, year: int):
         """
@@ -49,12 +49,18 @@ class Race:
         
         # get printed name
         printed_name = self.get_printed_name()
+        # get the race edition
         edition = self.get_edition()
+        # get the race classification
         classification = self.get_race_classification()
+        # get the start date
         start_date = self.get_start_date()
+        # get the end date
         end_date = self.get_end_date()
+        # get the number of stages
         num_stages = self.get_num_stages()
         
+        # set up for export
         general_info = {'race_name':printed_name,
                         'race_edition':edition,
                         'race_classification':classification,
@@ -162,6 +168,7 @@ class Race:
         
         # isolate soup
         soup = self.soup
+        # if there are stages
         try:
             # extract the useful table details
             table = soup.find('div', class_ = "page-content page-object default").find('div', class_ = "w47 left mb_w100").find("ul", class_ = "list pad2 flex fs14").find_all("li")
@@ -172,6 +179,7 @@ class Race:
                 # remove a stage for every rest day
                 if row.find_all("div")[3].text == 'Restday':
                     num_stages = num_stages - 1
+        # if it's a one day race
         except:
             num_stages = 1
         

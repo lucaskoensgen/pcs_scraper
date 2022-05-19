@@ -127,13 +127,19 @@ def table_output(body, column_names: list, column_indices: list):
             elif col_title == 'Time':
                 # first row has winning time
                 if i == 0:
+                    # extract the text of the time
                     time = col.text
+                    # if results dont have the time of the riders
                     if time == '-':
                         time = '00:01'
-                    if '+' in time:
-                        time = time[:time.find('+')]
+                    if '\xa0' in time:
+                        last_colon = [i for i, x in enumerate(time) if x == ':'][-1]
+                        time = time[:last_colon+3]
+                    # convert time to seconds
                     time = cvt.printed_time_to_seconds(time)
+                    # set the winning time
                     winning_time = time
+                    # winner doesn't have a time gap
                     time_gap = 0
                 # if not first row, need to reference the winning time to get total time of each rider
                 else:

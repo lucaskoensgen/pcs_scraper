@@ -6,6 +6,7 @@ import pandas as pd
 # pcs-py specific imports
 from .utility import url_management as mgt
 
+# defining the rider class and it's methods
 class Rider:
 
     def __init__(self, name: str):
@@ -31,7 +32,7 @@ class Rider:
 
     def general_info(self):
         """
-        - Returns dictionary of useful general purpose information about rider from scraping their homepage
+        Returns dictionary of useful general purpose information about rider from scraping their PCS homepage
 
         Returns:
             dict: organized output of general rider info 
@@ -107,7 +108,7 @@ class Rider:
     def get_race_history(self, **kwargs):
         """
         Returns the rider's complete race history as known by PCS.
-        Includes stage race GC and other minor classification results 
+        Includes one day races, stages, GC and other minor classification results 
 
         Returns:
             pd.DataFrame: columns = ['date', 'result', 
@@ -238,6 +239,49 @@ class Rider:
 
 
         return results_frame
+    
+    def get_palmares(self, top = 5):
+        """
+        Return the top n results for a rider's career in 5 categories
+        Top results are based on PCS points for each result
+
+        Parameters
+        ----------
+        top : int, optional
+            The top results to return in each category. The default is 5.
+
+        Returns
+        -------
+        palmares : dict
+            collection of 5 dataframes, organized into 5 categories:
+                1. one day races
+                2. stage races
+                3. final gc
+                4. final kom
+                5. final points
+
+        """
+        
+        # get the rider's whole race history
+        total_race_hx = self.get_race_history()
+        total_race_hx.pcs_points = total_race_hx.pcs_points.replace('-','0')
+        total_race_hx.pcs_points = total_race_hx.pcs_points.astype('int')
+        
+        # store categories in seperate dataframes
+        one_day_race_hx = total_race_hx[total_race_hx.loc[:,'race_href'].str.contains('result')].sort_values(by = 'pcs_points', ascending = False).reset_index(drop = True).loc[:top-1, :]
+        stage_race_hx = total_race_hx[(total_race_hx.loc[:,'race_name'].str.contains('Stage')) | (total_race_hx.loc[:,'race_name'].str.contains('Prologue'))].sort_values(by = 'pcs_points', ascending = False).reset_index(drop = True).loc[:top-1, :]
+        gc_race_hx = total_race_hx[total_race_hx.loc[:,'race_href'].str.contains('gc')].sort_values(by = 'pcs_points', ascending = False).reset_index(drop = True).loc[:top-1, :]
+        kom_race_hx = total_race_hx[total_race_hx.loc[:,'race_href'].str.contains('kom')].sort_values(by = 'pcs_points', ascending = False).reset_index(drop = True).loc[:top-1, :]
+        points_race_hx = total_race_hx[total_race_hx.loc[:,'race_href'].str.contains('points')].sort_values(by = 'pcs_points', ascending = False).reset_index(drop = True).loc[:top-1, :]
+        
+        # for exporting
+        palmares = {'one_day':one_day_race_hx,
+                    'stages':stage_race_hx,
+                    'gc':gc_race_hx,
+                    'kom':kom_race_hx,
+                    'points':points_race_hx}
+        
+        return palmares
 
     def get_name(self):
         """

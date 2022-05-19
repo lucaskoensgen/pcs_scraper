@@ -69,6 +69,7 @@ class Team:
         """
         Returns the races the team participated in.
         Default behaviour keeps national championships races, even though team is not technically competing
+        Does not contain races where rider raced for their country (ie. World Championships)
 
         Args:
             national_races (bool, optional): Do you want to include national championship races? Defaults to True.
@@ -148,6 +149,17 @@ class Team:
         return races_frame          
     
     def get_name_history(self):
+        """
+        Gets all the years of a teams history (and future names)
+
+        Returns
+        -------
+        frame : pd.DataFrame
+            each row is the year of the team. 
+                - columns = ['team_name', 'team_href', 
+                             'team_pcs_name', 'team_pcs_year']
+
+        """
         
         # isolate the soup
         soup = self.soup
@@ -157,22 +169,23 @@ class Team:
         # preset empty list
         team_names = []
         
+        # for each row in the dropdown menu
         for item in dropdown:
-            
+            # isolate their href
             team_href = item['value']
             team_href = team_href.split('/')[:2]
             team_href = '/'.join(team_href)
-            
+            # locate the name and year
             team_pcs_name = team_href[5:-5]
             team_pcs_year = team_href[-4:]
-            
+            # get the team name
             team_name = item.text.split('|')
             team_name = team_name[1]
             team_name = team_name[1:]
-            
+            # append to list
             current_team = [team_name, team_href, team_pcs_name, team_pcs_year]
             team_names = team_names + [current_team]
-            
+        # create the dataframe
         frame = pd.DataFrame(data = team_names,
                              columns = ['team_name', 'team_href', 'team_pcs_name', 'team_pcs_year'])
             
