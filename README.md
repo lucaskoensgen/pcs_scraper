@@ -19,7 +19,7 @@ In the next versions of this project I would like to link the statistical data f
 pip install pcs-scraper
 
 ###### Via conda:
-conda install pcs-scraper
+Coming soon
 
 ###### Via source code:
 Fork/clone this repo and create a conda environment to develop in using:
