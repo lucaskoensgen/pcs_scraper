@@ -1,5 +1,5 @@
 # pcs_scraper
-**v0.1**
+**v0.1.0**
 A python package to query, organize and prepare pandas dataframes from procyclingstats.com data to facilitate further analysis
 
 ## Project Description
@@ -16,10 +16,10 @@ In the next versions of this project I would like to link the statistical data f
 ## Installation
 
 ###### Via pip:
-Coming soon
+pip install pcs-scraper
 
 ###### Via conda:
-Coming soon
+conda install pcs-scraper
 
 ###### Via source code:
 Fork/clone this repo and create a conda environment to develop in using:

@@ -19,9 +19,9 @@ if __name__ == '__main__':
 #     url="https://github.com/lucaskoensgen/pcs_scraper",
 #     packages=find_packages(exclude=['tests', 'examples']),
 #     install_requires=[
-#         'requests>=2.27.1',
-#         'beautifulsoup4>=4.10.0',
-#         'pandas>=1.4.1'],
+#         'requests==2.27.0',
+#         'beautifulsoup4==4.10.0',
+#         'pandas==1.4.1'],
 #     classifiers=[
 #     'Development Status :: 3 - Alpha',
 #     'Intended Audience :: Science/Research',
