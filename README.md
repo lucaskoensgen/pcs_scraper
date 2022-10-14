@@ -46,7 +46,7 @@ import pcs_scraper as pcs
 pogacar = pcs.Rider(name = 'tadej-pogacar')
 
 # get pogacar's entire race history 
-pagacar_race_hx = pogacar.get_race_history()
+pogacar_race_hx = pogacar.get_race_history()
 ```
 ```
 # for specific race
