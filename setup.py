@@ -9,7 +9,7 @@ if __name__ == '__main__':
 #     readme = readme_file.read()
 # setup(
 #     name='pcs-scraper',
-#     version='0.1.0',
+#     version='0.2.0',
 #     license='GPLv3',
 #     description="A python-based api to access procyclingstats data",
 #     long_description=readme,
