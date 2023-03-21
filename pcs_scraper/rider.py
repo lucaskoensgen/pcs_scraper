@@ -124,9 +124,9 @@ class Rider:
         # to include ttt or not
         exclude_ttt = kwargs.pop('exclude_ttt', False)
         if exclude_ttt == False:
-            exclude_tt = "0"
+            exclude_ttt = "0"
         elif exclude_ttt == True:
-            exclude_tt = "1"
+            exclude_ttt = "1"
         # the type of race if interested in reducing returned results
         race_type = kwargs.pop('race_type', '')
         if race_type == '':
@@ -155,11 +155,11 @@ class Rider:
             "https://www.procyclingstats.com/" + 
             "rider.php?xseason=" + season +  "&zxseason=" +  
             "&pxseason=equal&sort=date&race=&km1=&zkm1=&pkm1=equal&" +
-            "limit=100&offset=0&topx=&ztopx=&ptopx=smallerorequal&" + 
+            "limit=200&topx=&ztopx=&ptopx=smallerorequal&" + 
             "type=&" + race_type + 
             "znation=&continent=&pnts=" + 
             "&zpnts=&ppnts=equal&level=&rnk=&zrnk=&prnk=equal&" + 
-            "exclude_tt=" + exclude_tt +
+            "exclude_tt=" + exclude_ttt +
             "&racedate=&zracedate=&pracedate=equal" + 
             "&name=&pname=contains&category=&profile_score=&pprofile_score=largerorequal&filter=Filter&"
             "id=" + rider_id + 
@@ -169,29 +169,11 @@ class Rider:
         results_page = req.get(results_url)
         # turn into soup
         results_soup = BeautifulSoup(results_page.content, "html.parser")
-        # find the number of queries needed (pcs will only display 100 results at a time)
-        limits = results_soup.find("select", {'name':'offset'}).find_all('option')
-        # preset empty list
+        # preset list
         data_out = []
-        
-        # loop through the number of queries
-        for limit in limits:
-            # turn the value of the offset into str
-            limit = str(limit['value'])
-            # format new query
-            results_url = (
-                "https://www.procyclingstats.com/" + 
-                "rider.php?xseason=" + season +  "&zxseason=" +  
-                "&pxseason=equal&sort=date&race=&km1=&zkm1=&pkm1=equal&limit=100&" + 
-                "offset=" + limit + 
-                "&topx=&ztopx=&ptopx=smallerorequal&type=&znation=&continent=&pnts=&zpnts=&ppnts=equal&level=&rnk=&zrnk=&prnk=equal&exclude_tt=0&racedate=&zracedate=&pracedate=equal&name=&pname=contains&category=&profile_score=&pprofile_score=largerorequal&filter=Filter&" + 
-                "id=" + rider_id + 
-                "&p=results"
-                )
-            # request the page
-            results_page = req.get(results_url)
-            # turn into soup
-            results_soup = BeautifulSoup(results_page.content, "html.parser")
+        # if a season was requested, only need to load that season
+        if season != '':
+            
             # find all the rows contained within the table body
             table_rows = results_soup.find("tbody").find_all('tr')
             
@@ -229,6 +211,71 @@ class Rider:
                             
                     # concat the list as nested list
                     data_out = data_out + [race_list]
+        
+        # if a season wasn't requested, need to loop through all possible years
+        else: 
+            # the years as identified by selector
+            years = results_soup.find("select", {'name':'xseason'}).find_all('option')[1:]
+            # loop through
+            for year in years:
+                # value of the year
+                year = year['value']
+                # format new query
+                results_url = (
+                    "https://www.procyclingstats.com/" + 
+                    "rider.php?xseason=" + year +  "&zxseason=" +  
+                    "&pxseason=equal&sort=date&race=&km1=&zkm1=&pkm1=equal&" + 
+                    "limit=200&" + 
+                    "&topx=&ztopx=&ptopx=smallerorequal&type=&znation=&continent=&" + 
+                    "pnts=&zpnts=&ppnts=equal&level=&rnk=&zrnk=&prnk=equal&" + 
+                    "exclude_tt=" + exclude_ttt  + 
+                    "&racedate=&zracedate=&pracedate=equal&name=&pname=contains&" + 
+                    "category=&profile_score=&pprofile_score=largerorequal&filter=Filter&" + 
+                    "id=" + rider_id + 
+                    "&p=results"
+                    )
+                
+                # request the page
+                results_page = req.get(results_url)
+                # turn into soup
+                results_soup = BeautifulSoup(results_page.content, "html.parser")
+                # find all the rows contained within the table body
+                table_rows = results_soup.find("tbody").find_all('tr')
+                
+                # loop through each row
+                for i, row in enumerate(table_rows):
+                    # if last row, skip
+                    if i == len(table_rows) - 1:
+                        pass
+                    # otherwise
+                    else:
+                        # find all the columns in given row
+                        items = row.find_all('td')
+                        # preset empty list
+                        race_list = []
+                        
+                        # loop through the columns
+                        for j, val in enumerate(items):
+                            # don't need the row number
+                            if j == 0:
+                                pass
+                            # if it's the race column, get the text, the href and the pcs race name
+                            elif j == 3:
+                                race_name = val.find('a').text
+                                race_href = val.find('a', href = True).get('href')
+                                race_pcs_name = race_href.split('/')[1]
+                                race_pcs_year = race_href.split('/')[-2]
+                                race_list = race_list + [race_name, race_href, race_pcs_name, race_pcs_year]
+                                
+                            # otherwise, just extract the text
+                            else:
+                                text = val.text
+                                if text == '':
+                                    text = '-'
+                                race_list = race_list + [text]
+                                
+                        # concat the list as nested list
+                        data_out = data_out + [race_list]
                     
         # turn nested list of each row into dataframe
         results_frame = pd.DataFrame(data = data_out,
