@@ -4,7 +4,7 @@ A python package to query, organize and prepare pandas dataframes from procyclin
 
 ## Project Description
 
-This project was undertaken as a side project while working as a data/race analyst with professional cycling teams. While commonplace for many other major sports, I couldn't find any available packages that provided access to professional cycling datasets. There were, however, already fantastic websites devoted to cataloguing this data and presenting it for free. The most user-friendly website I found was procyclingstats.com (PCS) but they didn't have a publicly available api, so I decided to make this package to interact with their posted data programmatically. 
+This project was undertaken as a side project while working with professional cycling teams. While commonplace for many other major sports, I couldn't find any available packages that provided access to professional cycling datasets. There were, however, already fantastic websites devoted to cataloguing this data and presenting it for free. The most user-friendly website I found was procyclingstats.com (PCS) but they didn't have a publicly available api, so I decided to make this package to interact with their posted data programmatically. 
 
 _pcs_scraper_ lets users interact with PCS through three fundamental and distinct classes:
 1. Riders
