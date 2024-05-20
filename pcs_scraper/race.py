@@ -135,7 +135,7 @@ class Race:
         # isolate soup
         soup = self.soup
         # extract the useful table details
-        table = soup.find('div', class_ = "page-content page-object default").find('div', class_ = "w47 left mb_w100").find("ul", class_ = "infolist fs13").find_all("li")
+        table = soup.find("ul", class_ = "infolist fs13").find_all('li')
         # get start date text
         start_date = table[0].find_all("div")[1].text
         
@@ -152,7 +152,7 @@ class Race:
         # isolate soup
         soup = self.soup
         # extract the useful table details
-        table = soup.find('div', class_ = "page-content page-object default").find('div', class_ = "w47 left mb_w100").find("ul", class_ = "infolist fs13").find_all("li")
+        table = soup.find("ul", class_ = "infolist fs13").find_all("li")
         # get end date text
         end_date = table[1].find_all("div")[1].text
 
@@ -171,13 +171,14 @@ class Race:
         # if there are stages
         try:
             # extract the useful table details
-            table = soup.find('div', class_ = "page-content page-object default").find('div', class_ = "w47 left mb_w100").find("ul", class_ = "list pad2 flex fs14").find_all("li")
+            table = soup.find('div', class_ = "w48 left mb_w100").find('div', class_ = "mt20").find_all("tr")
             # get the number of stages by the length of the table then removing restdays
-            num_stages = len(table)
+            num_stages = len(table[1:-1])
+            print(table)
             # loop through table
-            for row in table:
+            for row in table[1:-1]:
                 # remove a stage for every rest day
-                if row.find_all("div")[3].text == 'Restday':
+                if row.find_all("td")[3].text == 'Restday':
                     num_stages = num_stages - 1
         # if it's a one day race
         except:
