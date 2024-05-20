@@ -259,7 +259,7 @@ class Race:
         """
         
         # get the soup for results page
-        url = mgt.race_url(self.pcs_name, self.year)
+        url = mgt.race_url(self.pcs_name, self.year, suffix = 'gc')
         response = req.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         
