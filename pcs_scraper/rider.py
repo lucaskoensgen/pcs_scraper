@@ -114,7 +114,7 @@ class Rider:
             pd.DataFrame: columns = ['date', 'result', 
                                      'race_name', 'race_href', 'race_pcs_name', 'race_pcs_year',
                                      'classification', 'distance', 
-                                     'pcs_points', 'uci_points']
+                                     'pcs_points', 'uci_points', 'vert_mtr']
         """
         
         # set the kwargs
@@ -282,7 +282,7 @@ class Rider:
                                      columns = ['date', 'result', 
                                                 'race_name', 'race_href', 'race_pcs_name', 'race_pcs_year',
                                                 'classification', 'distance', 
-                                                'pcs_points', 'uci_points'])
+                                                'pcs_points', 'uci_points', 'vert_mtr'])
 
 
         return results_frame
